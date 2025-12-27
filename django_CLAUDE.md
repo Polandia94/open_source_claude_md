@@ -1001,6 +1001,41 @@ pip install -r requirements.txt
 make html
 ```
 
+### reStructuredText Directive Formatting
+
+Django's documentation uses Sphinx directives extensively. **Critical rule**: All directive content must be indented to align with the directive itself.
+
+```rst
+.. class:: MyClass(arg1, arg2)
+
+    Description of MyClass. This content is indented 4 spaces from the
+    left margin to align with the directive content level.
+
+    .. method:: my_method(param)
+
+        Method description. Nested directives require additional 4-space
+        indentation to maintain hierarchy.
+
+        :param param: Parameter description
+        :returns: Return value description
+
+    .. attribute:: my_attribute
+
+        Attribute description, also indented 4 spaces.
+```
+
+**Key points:**
+- Directive name (e.g., `.. class::`) starts at left margin
+- All content under directive indented 4 spaces
+- Nested directives add another 4 spaces
+- Field lists (`:param:`, `:returns:`, etc.) align with content
+- Required for Sphinx features like `toc_object_entries` to work
+
+**Common violations to fix:**
+- Unindented descriptions under `.. class::`, `.. method::`, `.. attribute::`
+- Inconsistent indentation between directives
+- Field lists not aligned with directive content
+
 ## Release Process
 
 Django follows a time-based release schedule:
@@ -1094,6 +1129,11 @@ When implementing features, typical file changes include:
    - May remove obsolete messages after feature changes
    - Typically very surgical - only change what's mentioned in the issue
    - Common locations: `docs/intro/`, `docs/topics/`, `docs/ref/`
+   - **CRITICAL**: When adding guidelines, also fix existing violations
+     - If PR adds "indentation guidelines", search for and fix indentation errors
+     - If PR adds "line length guidelines", fix existing long lines
+     - Adding rules without fixing violations creates cognitive dissonance
+     - Use `grep` or `Glob` to find violations across docs/ directory
 
 6. **Warning cleanup** (follow-up PRs):
    - When a PR says "Refs #XXXXX" it's usually a follow-up to that ticket
