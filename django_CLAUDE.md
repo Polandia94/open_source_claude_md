@@ -738,6 +738,30 @@ Locale files in `django/conf/locale/` for 100+ languages.
 
 ## Common Patterns and Idioms
 
+### Defensive Attribute Access
+
+When working with expressions in the ORM that may not be fully resolved:
+
+```python
+# Pattern 1: hasattr check with fallback
+output_field = (
+    self.lhs.output_field if hasattr(self.lhs, "output_field") else None
+)
+
+# Pattern 2: getattr with default
+output_field = getattr(self.lhs, "output_field", None)
+```
+
+**When to use:**
+- Working with F() expressions (don't have `output_field` until resolved)
+- Any expression that may be in an intermediate state
+- Common in `django/db/models/lookups.py` and `expressions.py`
+
+**Why it matters:**
+- F() and other expressions are lazily evaluated
+- Accessing `output_field` before resolution raises `AttributeError`
+- Always check existence before accessing optional attributes
+
 ### Lazy Objects
 
 ```python
@@ -910,6 +934,7 @@ When working with Django code:
 - Time zones: Always use timezone-aware datetimes
 - Model signals can cause infinite loops if not careful
 - Database transactions: Be aware of atomic blocks and rollback
+- F() expressions don't have `output_field` until resolved - always check with `hasattr()` before accessing
 
 ### File Change Patterns
 
@@ -933,7 +958,14 @@ When implementing features, typical file changes include:
    - Comprehensive tests in `tests/queries/` or similar
    - Document in `docs/ref/models/`
 
-4. **Documentation-only changes**:
+4. **Bug fixes**:
+   - Update code in `django/db/models/` or related
+   - Add focused test(s) in existing `tests/` directories
+   - **NO** CHANGES.md or FIX_SUMMARY.md files
+   - **NO** standalone validation scripts
+   - Keep changes minimal - just fix and test
+
+5. **Documentation-only changes**:
    - Often target specific doc files mentioned in the ticket/PR
    - May remove obsolete messages after feature changes
    - Typically very surgical - only change what's mentioned in the issue
