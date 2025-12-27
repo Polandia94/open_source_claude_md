@@ -819,7 +819,7 @@ output_field = getattr(self.lhs, "output_field", None)
 ### Lazy Objects and Translations
 
 ```python
-from django.utils.functional import lazy, cached_property
+from django.utils.functional import lazy, cached_property, SimpleLazyObject
 from django.utils.translation import gettext_lazy as _
 
 # Lazy evaluation
@@ -848,6 +848,54 @@ if self._route == path:
 if path.startswith(route := str(self._route)):
     return path.removeprefix(route), (), {}
 ```
+
+**SimpleLazyObject and Bound Methods:**
+
+SimpleLazyObject can cause infinite recursion in `__repr__` when the setup function is a bound method:
+
+```python
+# PROBLEMATIC: Bound method causes recursion
+class MyLazy(SimpleLazyObject):
+    def __init__(self):
+        super().__init__(self._generate)  # self._generate is bound method
+
+    def _generate(self):
+        return "value"
+
+# repr(obj) -> tries to repr(self._generate) -> repr(bound method) -> repr(self) -> infinite loop
+```
+
+**Two architectural approaches to avoid this:**
+
+1. **Defensive fix** in `SimpleLazyObject.__repr__`:
+   ```python
+   def __repr__(self):
+       if self._wrapped is empty:
+           # Detect bound method of self to avoid recursion
+           if hasattr(self._setupfunc, '__self__') and self._setupfunc.__self__ is self:
+               repr_attr = f"<bound method {self._setupfunc.__name__}>"
+           else:
+               repr_attr = self._setupfunc
+       else:
+           repr_attr = self._wrapped
+       return "<%s: %r>" % (type(self).__name__, repr_attr)
+   ```
+
+2. **Architectural fix** - avoid bound methods in subclasses:
+   ```python
+   # GOOD: Use standalone function instead of bound method
+   def generate_value():
+       return "value"
+
+   class MyLazy(SimpleLazyObject):
+       def __init__(self):
+           super().__init__(generate_value)  # Function, not bound method
+   ```
+
+**Best practice:** Consider both approaches when fixing bound method issues:
+- Defensive fix protects all SimpleLazyObject subclasses
+- Architectural fix avoids the problem at the source for specific classes
+- For Django core, often both are applied for maximum safety
 
 ### Signal Usage
 
@@ -1007,6 +1055,7 @@ When working with Django code:
 - Model signals can cause infinite loops if not careful
 - Database transactions: Be aware of atomic blocks and rollback
 - F() expressions don't have `output_field` until resolved - always check with `hasattr()` before accessing
+- **`force_str(None)` returns the string `"None"`, not `None`** - when checking if a value is None after force_str, check the original value first
 
 ### File Change Patterns
 
@@ -1032,10 +1081,13 @@ When implementing features, typical file changes include:
 
 4. **Bug fixes**:
    - Update code in `django/db/models/` or related
-   - Add focused test(s) in existing `tests/` directories
+   - Add focused test(s) ONLY when needed - if existing tests validate the fix, don't add new ones
+   - **ALWAYS** update `docs/releases/X.Y.Z.txt` for user-facing bugs (unless ticket metadata says "Needs tests: no")
    - **NO** CHANGES.md or FIX_SUMMARY.md files
    - **NO** standalone validation scripts
    - Keep changes minimal - just fix and test
+   - Consider architectural fixes (avoid problem at source) vs defensive fixes
+   - Trust existing test failures to validate your fix - don't over-test
 
 5. **Documentation-only changes**:
    - Often target specific doc files mentioned in the ticket/PR
