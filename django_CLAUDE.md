@@ -405,6 +405,8 @@ class MyModelTest(TestCase):
    - Use `TestCase` for database-dependent tests
    - Use `TransactionTestCase` when testing transactions
    - Use `SimpleTestCase` for non-database tests (faster)
+   - **Database-specific limitations**: When tests fail on specific backends (Oracle, MySQL, etc.) due to database limitations (not Django bugs), the correct fix is usually to **remove or modify the test**, not change Django's ORM
+   - Example: Oracle's ORA-00932 error for BLOB/CLOB fields in `IN()` clauses - solution is to use integer fields in tests instead
 
 5. **URL Resolution Tests**:
    - Create dedicated test URL configuration files in `tests/urlpatterns/` for realistic testing
@@ -1091,6 +1093,8 @@ When working with Django code:
 - Database transactions: Be aware of atomic blocks and rollback
 - F() expressions don't have `output_field` until resolved - always check with `hasattr()` before accessing
 - **`force_str(None)` returns the string `"None"`, not `None`** - when checking if a value is None after force_str, check the original value first
+- **Database-specific test failures**: When a PR says "Fixed [database] test crash", the fix is typically **removing or modifying the test**, NOT changing Django's implementation to work around database limitations
+- **Oracle limitations**: Oracle has strict type requirements (e.g., no BLOB/CLOB in IN() clauses) - tests should use compatible field types (integers, strings) instead
 
 ### File Change Patterns
 
