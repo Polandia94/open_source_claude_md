@@ -1,0 +1,1 @@
+Collection of CLAUDE.md files generated with https://github.com/Polandia94/auto-improvement
