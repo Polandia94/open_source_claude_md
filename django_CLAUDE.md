@@ -542,6 +542,29 @@ class Command(BaseCommand):
 4. **Stay focused**: If a PR says "remove obsolete message from tutorial and migrations topic", only touch those specific files
 5. **Follow the trail**: When a PR references a past ticket number, that ticket explains what changed and why documentation is now obsolete
 
+### Decoding PR Semantics
+
+**Understanding ticket references:**
+
+- **"Fixed #XXXXX"**: This PR is the **main implementation** of ticket XXXXX
+  - Expect: New features, bug fixes, tests, documentation
+  - Files: Both implementation and test files
+
+- **"Refs #XXXXX"**: This PR is a **follow-up** to ticket XXXXX
+  - The main work was done elsewhere
+  - Common reasons: cleanup, additional tests, docs, fixing warnings
+  - Example: "Refs #36806 -- Removed unnecessary null=True" means the null parameter handling was implemented in #36806, this is just cleanup
+
+- **"triggers warnings"** in description: The warnings **already exist**
+  - Task: Fix code that triggers the warning
+  - NOT: Implement the warning system
+  - Changes: Usually just in test models or example code
+
+- **"which has no effect"** or **"ignored"**: Parameter is intentionally ignored
+  - The implementation already handles this
+  - Task: Remove the useless parameter from examples/tests
+  - NOT: Add handling for the parameter
+
 ### Git Workflow
 
 1. **Fork and Clone**:
@@ -1019,6 +1042,14 @@ When implementing features, typical file changes include:
    - May remove obsolete messages after feature changes
    - Typically very surgical - only change what's mentioned in the issue
    - Common locations: `docs/intro/`, `docs/topics/`, `docs/ref/`
+
+6. **Warning cleanup** (follow-up PRs):
+   - When a PR says "Refs #XXXXX" it's usually a follow-up to that ticket
+   - If the description mentions "triggers warnings", the warnings **already exist**
+   - The task is to **fix code that triggers warnings**, not implement the warnings
+   - Common pattern: Remove deprecated arguments from Django's own test/example code
+   - Changes are typically **only in test files** or example code
+   - **Do NOT** modify the warning implementation unless explicitly stated
 
 ## Version-Specific Notes
 
