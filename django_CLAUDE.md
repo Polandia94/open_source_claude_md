@@ -256,6 +256,17 @@ Database-specific requirements:
    - f-strings for simple variable interpolation
    - `str.format()` or `%` for complex formatting
    - Never use f-strings for translatable strings
+   - Use walrus operator (`:=`) for inline assignment when value is used immediately:
+     ```python
+     # Good: assigns and uses in one line
+     if path.startswith(route := str(self._route)):
+         return path.removeprefix(route), (), {}
+
+     # Verbose alternative
+     route = str(self._route)
+     if path.startswith(route):
+         return path.removeprefix(route), (), {}
+     ```
 
 4. **Import Organization** (enforced by isort):
    ```python
@@ -394,6 +405,26 @@ class MyModelTest(TestCase):
    - Use `TestCase` for database-dependent tests
    - Use `TransactionTestCase` when testing transactions
    - Use `SimpleTestCase` for non-database tests (faster)
+
+5. **URL Resolution Tests**:
+   - Create dedicated test URL configuration files in `tests/urlpatterns/` for realistic testing
+   - Combine unit tests (direct pattern matching) with integration tests (full resolver)
+   - Example structure:
+     ```python
+     # tests/urlpatterns/my_test_urls.py
+     from django.urls import path, include
+     urlpatterns = [...]
+
+     # tests/urlpatterns/test_resolvers.py
+     def test_pattern_matching(self):
+         pattern = RoutePattern(_("test/"))
+         result = pattern.match("test/child/")  # Unit test
+
+     @override_settings(ROOT_URLCONF="urlpatterns.my_test_urls")
+     def test_full_resolution(self):
+         resolver = get_resolver()
+         match = resolver.resolve("/test/")  # Integration test
+     ```
 
 ## Common Development Tasks
 
@@ -762,10 +793,11 @@ output_field = getattr(self.lhs, "output_field", None)
 - Accessing `output_field` before resolution raises `AttributeError`
 - Always check existence before accessing optional attributes
 
-### Lazy Objects
+### Lazy Objects and Translations
 
 ```python
 from django.utils.functional import lazy, cached_property
+from django.utils.translation import gettext_lazy as _
 
 # Lazy evaluation
 lazy_value = lazy(expensive_function, str)()
@@ -775,6 +807,23 @@ class MyClass:
     @cached_property
     def expensive_property(self):
         return expensive_computation()
+```
+
+**Lazy Translation String Behavior:**
+- Lazy translation objects (`gettext_lazy()`) implement `__eq__()` for direct string comparison
+- No need to convert to `str()` before comparing with strings: `lazy_route == path` works
+- Only convert to `str()` when the string value is needed for operations like `startswith()` or `removeprefix()`
+- Use walrus operator for efficient inline string conversion: `if path.startswith(route := str(lazy_route))`
+
+**When to convert lazy strings:**
+```python
+# Direct comparison - NO conversion needed
+if self._route == path:
+    return "", (), {}
+
+# String methods - conversion REQUIRED
+if path.startswith(route := str(self._route)):
+    return path.removeprefix(route), (), {}
 ```
 
 ### Signal Usage
