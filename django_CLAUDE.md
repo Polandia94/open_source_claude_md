@@ -1038,6 +1038,36 @@ Django's documentation uses Sphinx directives extensively. **Critical rule**: Al
 - Inconsistent indentation between directives
 - Field lists not aligned with directive content
 
+### Documentation Parameter Naming Conventions
+
+Django database functions use **consistent parameter naming** in documentation signatures:
+
+- Use `expression` for database expression/field parameters (not `string`, `value`, `field`)
+- Documentation signatures should match the established pattern across similar functions
+- Parameter names in docstrings are for documentation only - they cannot be used as keyword arguments
+- Check surrounding documentation for naming patterns before documenting new functions
+
+**Example from StrIndex:**
+```python
+# INCORRECT (misleading, non-standard)
+.. class:: StrIndex(string, substring, **extra)
+
+# CORRECT (consistent with other database functions)
+.. class:: StrIndex(expression, substring, **extra)
+```
+
+**Why consistency matters:**
+- Users learn one naming pattern that applies across all database functions
+- Documentation is more discoverable (searching for "expression" finds all related functions)
+- Reduces cognitive load when switching between similar functions
+- Aligns with Django ORM's expression system terminology
+
+**How to check for consistency:**
+1. Look at similar functions in the same documentation file
+2. Check if the parameter represents a field/expression vs a literal value
+3. Use `expression` for ORM expressions, `value` for Python literals
+4. Match warning messages to documentation signatures
+
 ## Release Process
 
 Django follows a time-based release schedule:
@@ -1095,6 +1125,8 @@ When working with Django code:
 - **`force_str(None)` returns the string `"None"`, not `None`** - when checking if a value is None after force_str, check the original value first
 - **Database-specific test failures**: When a PR says "Fixed [database] test crash", the fix is typically **removing or modifying the test**, NOT changing Django's implementation to work around database limitations
 - **Oracle limitations**: Oracle has strict type requirements (e.g., no BLOB/CLOB in IN() clauses) - tests should use compatible field types (integers, strings) instead
+- **Browser-specific CSS bugs**: Safari has known issues with `display: flex` on `<fieldset>` elements - use higher CSS specificity to override for specific elements: `fieldset.flex-container { display: block; }` instead of modifying templates
+- **DOM traversal with `getElementsByTagName()`**: This method searches the ENTIRE subtree, not just direct children. When checking for None values in XML serialization, must distinguish between a field being None vs containing subelements with None values (e.g., `<field><None/></field>` vs `<field><natural><None/></natural></field>`)
 
 ### File Change Patterns
 
@@ -1123,10 +1155,12 @@ When implementing features, typical file changes include:
    - Add focused test(s) ONLY when needed - if existing tests validate the fix, don't add new ones
    - **ALWAYS** update `docs/releases/X.Y.Z.txt` for user-facing bugs (unless ticket metadata says "Needs tests: no")
    - **NO** CHANGES.md or FIX_SUMMARY.md files
-   - **NO** standalone validation scripts
+   - **NO** standalone validation scripts or test HTML files
+   - **NO** technical explanation markdown files (SAFARI_FIX.md, etc.)
    - Keep changes minimal - just fix and test
    - Consider architectural fixes (avoid problem at source) vs defensive fixes
    - Trust existing test failures to validate your fix - don't over-test
+   - For CSS fixes: Only modify the minimal CSS rules needed, avoid scope creep into unrelated styling
 
 5. **Documentation-only changes**:
    - Often target specific doc files mentioned in the ticket/PR
